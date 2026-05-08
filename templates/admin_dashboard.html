@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard - AI Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans">
+    <nav class="bg-slate-800 p-4 border-b border-slate-700 flex justify-between items-center">
+        <h1 class="text-xl font-bold">AI Manager Admin</h1>
+        <a href="/logout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-bold">Logout</a>
+    </nav>
+    
+    <div class="p-8 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Manage Packages -->
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+            <h2 class="text-xl font-bold mb-4 text-blue-400">Manage Packages</h2>
+            <form action="/admin/package/add" method="POST" class="space-y-4 mb-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
+                <input type="text" name="name" placeholder="Package Name" class="w-full bg-slate-700 p-2 rounded border-none" required>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" name="price" placeholder="Price ($)" class="bg-slate-700 p-2 rounded border-none" required>
+                    <input type="number" name="max_agents" placeholder="Max Agents" class="bg-slate-700 p-2 rounded border-none" required>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" name="quota" placeholder="Monthly Quota" class="bg-slate-700 p-2 rounded border-none" required>
+                    <input type="number" name="max_file_size_mb" placeholder="Storage (MB)" class="bg-slate-700 p-2 rounded border-none" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 p-2 rounded hover:bg-blue-700 text-sm font-bold">Create Package</button>
+            </form>
+            <div class="space-y-3">
+                {% for pkg in packages %}
+                <details class="bg-slate-700 p-3 rounded group border border-slate-600">
+                    <summary class="flex justify-between cursor-pointer items-center list-none">
+                        <span class="font-bold text-sm">{{ pkg.name }} <span class="text-xs text-slate-400 font-normal ml-2">(${{ pkg.price }})</span></span>
+                        <div class="flex gap-2">
+                            <span class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400">EDIT</span>
+                            <a href="/admin/package/delete/{{ pkg.id }}" class="text-[10px] bg-red-900/30 px-2 py-1 rounded text-red-400" onclick="return confirm('Delete package?')">DEL</a>
+                        </div>
+                    </summary>
+                    <form action="/admin/package/edit/{{ pkg.id }}" method="POST" class="mt-4 space-y-3 border-t border-slate-600 pt-4">
+                        <input type="text" name="name" value="{{ pkg.name }}" class="w-full bg-slate-800 p-2 rounded text-sm border border-slate-600">
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <label class="text-slate-500 mb-1 block">Price ($)</label>
+                                <input type="number" name="price" value="{{ pkg.price }}" class="w-full bg-slate-800 p-2 rounded border border-slate-600">
+                            </div>
+                            <div>
+                                <label class="text-slate-500 mb-1 block">Agents</label>
+                                <input type="number" name="max_agents" value="{{ pkg.max_agents }}" class="w-full bg-slate-800 p-2 rounded border border-slate-600">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <label class="text-slate-500 mb-1 block">Quota (msg)</label>
+                                <input type="number" name="quota" value="{{ pkg.quota }}" class="w-full bg-slate-800 p-2 rounded border border-slate-600">
+                            </div>
+                            <div>
+                                <label class="text-slate-500 mb-1 block">Storage (MB)</label>
+                                <input type="number" name="max_file_size_mb" value="{{ pkg.max_file_size_mb }}" class="w-full bg-slate-800 p-2 rounded border border-slate-600">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 p-1.5 rounded text-xs font-bold">Update Package</button>
+                    </form>
+                </details>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Manage Clients -->
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+            <h2 class="text-xl font-bold mb-4 text-green-400">Manage Clients</h2>
+            <form action="/admin/client/add" method="POST" class="space-y-4 mb-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
+                <input type="text" name="username" placeholder="Username" class="w-full bg-slate-700 p-2 rounded border-none" required>
+                <input type="password" name="password" placeholder="Password" class="w-full bg-slate-700 p-2 rounded border-none" required>
+                <select name="package_id" class="w-full bg-slate-700 p-2 rounded border-none" required>
+                    {% for pkg in packages %}
+                    <option value="{{ pkg.id }}">{{ pkg.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="w-full bg-green-600 p-2 rounded hover:bg-green-700 text-sm font-bold">Create Client</button>
+            </form>
+            <div class="space-y-3">
+                {% for c in clients if not c.is_admin %}
+                <details class="bg-slate-700 p-3 rounded group border border-slate-600">
+                    <summary class="flex justify-between cursor-pointer items-center list-none">
+                        <span class="font-bold text-sm">{{ c.username }} <span class="text-[10px] text-slate-500 font-normal block">{{ c.usage_count }} total messages sent</span></span>
+                        <div class="flex gap-2">
+                            <span class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400">EDIT</span>
+                            <a href="/admin/client/delete/{{ c.id }}" class="text-[10px] bg-red-900/30 px-2 py-1 rounded text-red-400" onclick="return confirm('Delete client?')">DEL</a>
+                        </div>
+                    </summary>
+                    <form action="/admin/client/edit/{{ c.id }}" method="POST" class="mt-4 space-y-3 border-t border-slate-600 pt-4">
+                        <input type="text" name="username" value="{{ c.username }}" class="w-full bg-slate-800 p-2 rounded text-sm border border-slate-600">
+                        <input type="password" name="password" placeholder="Change Password (optional)" class="w-full bg-slate-800 p-2 rounded text-sm border border-slate-600">
+                        <select name="package_id" class="w-full bg-slate-800 p-2 rounded text-sm border border-slate-600">
+                            {% for pkg in packages %}
+                            <option value="{{ pkg.id }}" {{ 'selected' if pkg.id == c.package_id }}>{{ pkg.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="w-full bg-green-600 p-1.5 rounded text-xs font-bold">Update Client</button>
+                    </form>
+                </details>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- System Logs -->
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 md:col-span-2">
+            <h2 class="text-xl font-bold mb-4 text-yellow-400">Live API Traffic</h2>
+            <div class="space-y-2">
+                {% for log in logs %}
+                <div class="bg-slate-700 p-3 rounded text-sm border-l-4 border-yellow-500 shadow-lg">
+                    <div class="flex justify-between text-[10px] text-slate-500 mb-2">
+                        <span>CLIENT: {{ log.client_id }} | AGENT: {{ log.agent_id }}</span>
+                        <span>{{ log.timestamp }}</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <p class="text-slate-300 italic">"{{ log.prompt[:150] }}..."</p>
+                        <p class="text-blue-300 bg-slate-800 p-2 rounded">"{{ log.response[:150] }}..."</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

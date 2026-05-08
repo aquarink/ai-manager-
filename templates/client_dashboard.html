@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Client Dashboard - AI Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="fixed top-4 right-4 z-50">
+          {% for message in messages %}
+            <div class="bg-red-600 text-white px-6 py-3 rounded-lg shadow-xl mb-2">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <nav class="bg-slate-800 p-4 border-b border-slate-700 flex justify-between items-center sticky top-0 z-40">
+        <h1 class="text-xl font-bold">Client Dashboard</h1>
+        <div class="flex items-center gap-6">
+            <div class="text-right">
+                <p class="text-xs text-slate-400">Monthly Usage</p>
+                <p class="font-bold text-blue-400">{{ current_user.usage_count }} / {{ package.quota if package.quota > 0 else '∞' }}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-xs text-slate-400">Agents Limit</p>
+                <p class="font-bold text-purple-400">{{ agents|length }} / {{ package.max_agents if package.max_agents > 0 else '∞' }}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-xs text-slate-400">Storage Usage</p>
+                <p class="font-bold text-green-400">{{ (storage_usage / (1024*1024))|round(2) }} MB / {{ package.max_file_size_mb }} MB</p>
+            </div>
+            <a href="/logout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-bold">Logout</a>
+        </div>
+    </nav>
+    
+    <div class="p-8 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Add Agent -->
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 h-fit">
+            <h2 class="text-xl font-bold mb-4 text-purple-400">Create New Agent</h2>
+            <form action="/agent/add" method="POST" class="space-y-4">
+                <input type="text" name="name" placeholder="Agent Name (e.g. ITCHA)" class="w-full bg-slate-700 p-2 rounded border-none focus:ring-2 focus:ring-purple-500" required>
+                <textarea name="system_prompt" placeholder="System Prompt / Instructions" class="w-full bg-slate-700 p-2 rounded border-none h-32 focus:ring-2 focus:ring-purple-500" required></textarea>
+                <button type="submit" class="w-full bg-purple-600 p-2 rounded hover:bg-purple-700 font-bold transition-all">+ Create Agent</button>
+            </form>
+        </div>
+
+        <!-- My Agents -->
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+            <h2 class="text-xl font-bold mb-4 text-orange-400">My Agents</h2>
+            <div class="space-y-6">
+                {% for agent in agents %}
+                <div class="bg-slate-700 p-4 rounded-lg border border-slate-600 shadow-lg">
+                    <details class="group" open>
+                        <summary class="flex justify-between items-center cursor-pointer list-none">
+                            <div class="flex items-center gap-3">
+                                <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                                <h3 class="font-bold text-lg text-white">{{ agent.name }}</h3>
+                                <span class="text-[10px] bg-slate-900 px-2 py-0.5 rounded text-slate-500 uppercase tracking-widest">ID: {{ agent.id }}</span>
+                            </div>
+                            <div class="flex gap-3 items-center">
+                                <span class="text-[10px] text-blue-400 font-bold hover:underline">Settings & Files</span>
+                                <a href="/agent/delete/{{ agent.id }}" class="text-[10px] text-red-400 hover:text-red-300 transition-colors" onclick="return confirm('Delete agent and all its data?')">Delete</a>
+                            </div>
+                        </summary>
+                        
+                        <div class="mt-4 pt-4 border-t border-slate-600 space-y-6">
+                            <!-- Edit Agent -->
+                            <form action="/agent/edit/{{ agent.id }}" method="POST" class="space-y-3">
+                                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Identity (System Prompt)</label>
+                                <textarea name="system_prompt" class="w-full bg-slate-800 p-3 rounded text-sm h-32 focus:ring-1 focus:ring-blue-500 border-none transition-all">{{ agent.system_prompt }}</textarea>
+                                <div class="flex justify-end">
+                                    <button type="submit" class="bg-blue-600 hover:bg-blue-500 px-4 py-1.5 rounded text-xs font-bold transition-colors shadow-lg">Update Agent</button>
+                                </div>
+                            </form>
+                            
+                            <!-- Files Section -->
+                            <div class="bg-slate-800 p-4 rounded-lg">
+                                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-3">Knowledge Base (RAG Files)</label>
+                                
+                                <ul class="space-y-2 mb-4">
+                                    {% for file in agent.files %}
+                                    <li class="flex justify-between items-center bg-slate-900 p-2 rounded text-xs group">
+                                        <div class="flex items-center gap-2 overflow-hidden">
+                                            <svg class="w-3 h-3 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                            <span class="truncate text-slate-300">{{ file.filename }}</span>
+                                            <span class="text-[9px] text-slate-600 italic">({{ (file.file_size_bytes / 1024)|round(1) }} KB)</span>
+                                        </div>
+                                        <a href="/agent/file/delete/{{ file.id }}" class="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-900/30 rounded" title="Remove File">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                        </a>
+                                    </li>
+                                    {% endfor %}
+                                    {% if not agent.files %}
+                                    <li class="text-center text-slate-600 text-[10px] py-2 border-2 border-dashed border-slate-700 rounded-lg">No knowledge files uploaded</li>
+                                    {% endif %}
+                                </ul>
+
+                                <form action="/agent/upload/{{ agent.id }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-3">
+                                    <input type="file" name="file" multiple class="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-slate-700 file:text-white hover:file:bg-slate-600 cursor-pointer">
+                                    <button type="submit" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-xs font-bold transition-all border border-slate-600">Upload Multiple Files</button>
+                                </form>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="md:col-span-2 bg-slate-800 p-6 rounded-xl border border-slate-700">
+            <h2 class="text-xl font-bold mb-4 text-blue-400">Integration Endpoint</h2>
+            <div class="bg-slate-900 p-4 rounded font-mono text-xs space-y-2 overflow-x-auto border border-slate-700 shadow-inner">
+                <p><span class="text-slate-500">POST</span> <span class="text-blue-400">https://manager.ai.mobwn.my.id/api/chat</span></p>
+                <p><span class="text-slate-500">HEADER</span> <span class="text-green-400">X-API-KEY: {{ current_user.api_key }}</span></p>
+                <p><span class="text-slate-500">PAYLOAD</span> <span class="text-orange-400">{"agent_id": <span class="bg-slate-800 px-1 rounded">YOUR_AGENT_ID</span>, "message": "Halo!"}</span></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
